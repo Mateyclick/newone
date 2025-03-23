@@ -1,6 +1,5 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Move, Maximize, Minimize, Eye, EyeOff, Grid, Download, Upload, Image } from 'lucide-react';
+import { Move, Maximize, Minimize, Eye, EyeOff, Grid, Download, Upload, Image as ImageIcon } from 'lucide-react';
 import { Template, Position } from '../types';
 import { TemplatePicker } from './TemplatePicker';
 import { defaultTemplates } from '../data/templates';
@@ -192,7 +191,7 @@ export function PosterGenerator() {
     canvas.height = selectedTemplate.height;
 
     // Crear y cargar imagen de fondo
-    const bgImg = new Image();
+    const bgImg = new window.Image();
     bgImg.onload = () => {
       // Calcular dimensiones escaladas
       const scaledWidth = bgImg.width * bgScale;
@@ -207,7 +206,7 @@ export function PosterGenerator() {
       
       // Dibujar overlay si está visible
       if (showTemplate) {
-        const overlay = new Image();
+        const overlay = new window.Image();
         overlay.onload = () => {
           ctx.drawImage(overlay, 0, 0, selectedTemplate.width, selectedTemplate.height);
           
@@ -364,7 +363,7 @@ export function PosterGenerator() {
                   <span>Procesando...</span>
                 ) : (
                   <>
-                    <Image className="w-5 h-5 mr-2" />
+                    <ImageIcon className="w-5 h-5 mr-2" />
                     <span>Quitar Fondo</span>
                   </>
                 )}
