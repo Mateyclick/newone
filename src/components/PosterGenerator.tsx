@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Move, Maximize, Minimize, Eye, EyeOff, Grid, Download, Upload, Image as ImageIcon } from 'lucide-react';
 import { Template, Position } from '../types';
@@ -40,6 +41,7 @@ export function PosterGenerator() {
         // Usar las plantillas predeterminadas
         setTemplates(defaultTemplates);
         setSelectedTemplate(defaultTemplates[0]);
+        console.log("Templates loaded:", defaultTemplates);
       } catch (error) {
         console.error("Error cargando plantillas SVG:", error);
       }
@@ -128,6 +130,7 @@ export function PosterGenerator() {
       
       const formData = new FormData();
       formData.append('image_file', blob, 'image.png');
+      formData.append('size', 'auto');
       
       // Llamar a la API de remove.bg
       const response = await fetch('https://api.remove.bg/v1.0/removebg', {
@@ -139,6 +142,8 @@ export function PosterGenerator() {
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error de remove.bg:", errorText);
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       
@@ -193,6 +198,9 @@ export function PosterGenerator() {
     // Crear y cargar imagen de fondo
     const bgImg = new window.Image();
     bgImg.onload = () => {
+      // Limpiar el canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       // Calcular dimensiones escaladas
       const scaledWidth = bgImg.width * bgScale;
       const scaledHeight = bgImg.height * bgScale;
@@ -219,6 +227,9 @@ export function PosterGenerator() {
           }
         };
         overlay.src = selectedTemplate.overlay;
+        overlay.onerror = (e) => {
+          console.error("Error al cargar el overlay:", e);
+        };
       } else if (price) {
         // Si el template está oculto pero hay precio, dibujarlo de todas formas
         ctx.fillStyle = priceColor;
@@ -228,6 +239,9 @@ export function PosterGenerator() {
       }
     };
     bgImg.src = backgroundImage;
+    bgImg.onerror = (e) => {
+      console.error("Error al cargar la imagen de fondo:", e);
+    };
   };
 
   // Función para descargar el póster
@@ -293,13 +307,13 @@ export function PosterGenerator() {
   }, [isDraggingPrice, isDraggingBg, onDrag, endDrag]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-6">Generador de Carteles</h1>
+        <h1 className="text-3xl font-bold text-center mb-4 sm:mb-6">Generador de Carteles</h1>
         
         {/* Selector de plantillas */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">Selecciona una plantilla</h2>
+        <div className="mb-4 sm:mb-6">
+          <h2 className="text-xl font-semibold mb-2 sm:mb-3">Selecciona una plantilla</h2>
           <TemplatePicker
             templates={templates}
             selectedTemplate={selectedTemplate}
@@ -308,10 +322,10 @@ export function PosterGenerator() {
         </div>
         
         {/* Controles principales */}
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Panel de imagen */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <h3 className="text-lg font-medium">Imagen de Fondo</h3>
               
               {/* Input file oculto */}
@@ -326,9 +340,9 @@ export function PosterGenerator() {
               {/* Botón para subir imagen */}
               <button
                 onClick={triggerFileInput}
-                className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors"
+                className="flex items-center justify-center w-full p-2 sm:p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors"
               >
-                <Upload className="w-5 h-5 mr-2" />
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 <span>Subir Imagen</span>
               </button>
               
@@ -363,7 +377,7 @@ export function PosterGenerator() {
                   <span>Procesando...</span>
                 ) : (
                   <>
-                    <ImageIcon className="w-5 h-5 mr-2" />
+                    <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     <span>Quitar Fondo</span>
                   </>
                 )}
@@ -378,39 +392,39 @@ export function PosterGenerator() {
                   disabled={!backgroundImage}
                   className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
                 >
-                  <Maximize className="w-5 h-5" />
+                  <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={() => adjustImageSize(0.9)}
                   disabled={!backgroundImage}
                   className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
                 >
-                  <Minimize className="w-5 h-5" />
+                  <Minimize className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={centerImage}
                   disabled={!backgroundImage}
                   className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
                 >
-                  <Move className="w-5 h-5" />
+                  <Move className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={() => setShowGrid(!showGrid)}
                   className={`p-2 rounded ${showGrid ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
                 >
-                  <Grid className="w-5 h-5" />
+                  <Grid className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={() => setShowTemplate(!showTemplate)}
                   className={`p-2 rounded ${!showTemplate ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
                 >
-                  {showTemplate ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  {showTemplate ? <Eye className="w-4 h-4 sm:w-5 sm:h-5" /> : <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
               </div>
             </div>
             
             {/* Panel de precio */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <h3 className="text-lg font-medium">Texto del Precio</h3>
               
               <div>
@@ -469,17 +483,17 @@ export function PosterGenerator() {
                 </div>
               </div>
               
-              <div className="pt-4">
+              <div className="pt-2 sm:pt-4">
                 <button
                   onClick={downloadPoster}
                   disabled={!backgroundImage}
-                  className={`w-full p-3 rounded-md flex items-center justify-center ${
+                  className={`w-full p-2 sm:p-3 rounded-md flex items-center justify-center ${
                     !backgroundImage
                       ? 'bg-gray-300 cursor-not-allowed'
                       : 'bg-green-600 hover:bg-green-700 text-white'
                   }`}
                 >
-                  <Download className="w-5 h-5 mr-2" />
+                  <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   <span>Descargar Banner</span>
                 </button>
               </div>
@@ -489,7 +503,7 @@ export function PosterGenerator() {
         
         {/* Área de previsualización */}
         {selectedTemplate && (
-          <div className="relative mb-8 mx-auto overflow-hidden bg-white shadow-lg rounded-lg">
+          <div className="relative mb-6 mx-auto overflow-hidden bg-white shadow-lg rounded-lg">
             <div
               style={{
                 width: '100%',
@@ -530,6 +544,7 @@ export function PosterGenerator() {
                     style={{
                       maxWidth: 'none',
                     }}
+                    onError={(e) => console.error("Error cargando imagen:", e)}
                   />
                 </div>
               )}
@@ -540,6 +555,7 @@ export function PosterGenerator() {
                   src={selectedTemplate.overlay}
                   alt="Template"
                   className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+                  onError={(e) => console.error("Error cargando template overlay:", e)}
                 />
               )}
               
@@ -563,6 +579,7 @@ export function PosterGenerator() {
                       fontWeight: 'bold',
                       textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
                       userSelect: 'none',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {price}
@@ -581,7 +598,7 @@ export function PosterGenerator() {
       </div>
       
       {/* Instrucciones para el usuario */}
-      <div className="max-w-4xl mx-auto mt-8 p-4 bg-blue-50 rounded-lg text-sm">
+      <div className="max-w-4xl mx-auto mt-4 sm:mt-8 p-3 sm:p-4 bg-blue-50 rounded-lg text-sm">
         <h3 className="font-medium mb-2">Instrucciones de uso:</h3>
         <ol className="list-decimal pl-5 space-y-1">
           <li>Selecciona una plantilla de las opciones disponibles.</li>

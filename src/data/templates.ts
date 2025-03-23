@@ -4,7 +4,7 @@ import { Template } from '../types';
 export const defaultTemplates: Template[] = [
   {
     name: "Oferta",
-    thumbnail: "/src/1.png", // Asegúrate de que esta ruta sea correcta
+    thumbnail: "/src/1.png",
     overlay: "/src/1.svg",
     width: 1080,
     height: 1920,
