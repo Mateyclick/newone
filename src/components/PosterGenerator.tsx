@@ -1,6 +1,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Move, Maximize, Minimize, XCircle, Eye, EyeOff, Grid, Download, Upload, Image } from 'lucide-react';
+import { Move, Maximize, Minimize, Eye, EyeOff, Grid, Download, Upload, Image } from 'lucide-react';
 import { Template, Position } from '../types';
 import { TemplatePicker } from './TemplatePicker';
 import { defaultTemplates } from '../data/templates';
@@ -38,36 +38,9 @@ export function PosterGenerator() {
     // Cargar las plantillas SVG proporcionadas
     const loadSvgTemplates = async () => {
       try {
-        // Crear nuevas plantillas basadas en los archivos SVG
-        const newTemplates: Template[] = [
-          {
-            name: "Oferta",
-            thumbnail: "/src/1.png", // Imagen en miniatura para la interfaz
-            overlay: "/src/1.svg", // SVG para la superposición
-            width: 1080,
-            height: 1920,
-            priceArea: { x: 540, y: 960, fontSize: 80 }
-          },
-          {
-            name: "New!",
-            thumbnail: "/src/2.png",
-            overlay: "/src/2.svg",
-            width: 1080,
-            height: 1920,
-            priceArea: { x: 540, y: 960, fontSize: 80 }
-          },
-          {
-            name: "Sale",
-            thumbnail: "/src/3.png",
-            overlay: "/src/3.svg",
-            width: 1080,
-            height: 1920,
-            priceArea: { x: 540, y: 960, fontSize: 80 }
-          }
-        ];
-        
-        setTemplates(newTemplates);
-        setSelectedTemplate(newTemplates[0]);
+        // Usar las plantillas predeterminadas
+        setTemplates(defaultTemplates);
+        setSelectedTemplate(defaultTemplates[0]);
       } catch (error) {
         console.error("Error cargando plantillas SVG:", error);
       }
