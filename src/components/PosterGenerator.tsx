@@ -1,48 +1,117 @@
-import { useState, useRef, useCallback } from 'react';
-import { Move } from 'lucide-react';
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Move, Maximize, Minimize, XCircle, Eye, EyeOff, Grid, Download, Upload, Image } from 'lucide-react';
 import { Template, Position } from '../types';
 import { TemplatePicker } from './TemplatePicker';
 import { defaultTemplates } from '../data/templates';
 
 export function PosterGenerator() {
-  const [templates] = useState<Template[]>(defaultTemplates);
+  // Estados para manejar las plantillas y la selección
+  const [templates, setTemplates] = useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templates[0] || null);
+  
+  // Estados para la imagen y su manipulación
   const [backgroundImage, setBackgroundImage] = useState<string>('');
   const [price, setPrice] = useState<string>('');
-  const [pricePosition, setPricePosition] = useState<Position>({ x: 0, y: 0 });
+  const [pricePosition, setPricePosition] = useState<Position>({ x: 200, y: 700 });
+  const [priceColor, setPriceColor] = useState<string>('#ffffff');
+  const [priceFontSize, setPriceFontSize] = useState<number>(40);
+  const [showGrid, setShowGrid] = useState<boolean>(false);
+  const [showTemplate, setShowTemplate] = useState<boolean>(true);
+  
+  // Estados para el manejo del arrastre (drag)
   const [isDraggingPrice, setIsDraggingPrice] = useState(false);
   const [isDraggingBg, setIsDraggingBg] = useState(false);
   const [bgPosition, setBgPosition] = useState<Position>({ x: 0, y: 0 });
+  const [bgScale, setBgScale] = useState<number>(1.0);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  
+  // Referencias
   const dragStartPos = useRef<Position>({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Inicialización de plantillas SVG
+  useEffect(() => {
+    // Cargar las plantillas SVG proporcionadas
+    const loadSvgTemplates = async () => {
+      try {
+        // Crear nuevas plantillas basadas en los archivos SVG
+        const newTemplates: Template[] = [
+          {
+            name: "Oferta",
+            thumbnail: "/src/1.png", // Imagen en miniatura para la interfaz
+            overlay: "/src/1.svg", // SVG para la superposición
+            width: 1080,
+            height: 1920,
+            priceArea: { x: 540, y: 960, fontSize: 80 }
+          },
+          {
+            name: "New!",
+            thumbnail: "/src/2.png",
+            overlay: "/src/2.svg",
+            width: 1080,
+            height: 1920,
+            priceArea: { x: 540, y: 960, fontSize: 80 }
+          },
+          {
+            name: "Sale",
+            thumbnail: "/src/3.png",
+            overlay: "/src/3.svg",
+            width: 1080,
+            height: 1920,
+            priceArea: { x: 540, y: 960, fontSize: 80 }
+          }
+        ];
+        
+        setTemplates(newTemplates);
+        setSelectedTemplate(newTemplates[0]);
+      } catch (error) {
+        console.error("Error cargando plantillas SVG:", error);
+      }
+    };
+
+    loadSvgTemplates();
+  }, []);
+
+  // Manejador para la subida de archivos
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         setBackgroundImage(e.target?.result as string);
+        // Reiniciar posición y escala cuando se sube una nueva imagen
+        setBgPosition({ x: 0, y: 0 });
+        setBgScale(1.0);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const startDrag = (e: React.MouseEvent | React.TouchEvent, isDraggingPrice: boolean) => {
+  // Manejador para iniciar el arrastre (drag)
+  const startDrag = (e: React.MouseEvent | React.TouchEvent, dragType: 'price' | 'background') => {
     e.preventDefault();
-    const pos = 'touches' in e ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
-                              : { x: e.clientX, y: e.clientY };
+    const pos = 'touches' in e 
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
+      : { x: e.clientX, y: e.clientY };
+    
     dragStartPos.current = pos;
     
-    if (isDraggingPrice) {
+    if (dragType === 'price') {
       setIsDraggingPrice(true);
     } else {
       setIsDraggingBg(true);
     }
   };
 
+  // Manejador para el movimiento durante el arrastre
   const onDrag = useCallback((e: MouseEvent | TouchEvent) => {
-    const currentPos = 'touches' in e ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
-                                    : { x: e.clientX, y: e.clientY };
+    const currentPos = 'touches' in e 
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
+      : { x: e.clientX, y: e.clientY };
     
     if (isDraggingPrice) {
       setPricePosition(prev => ({
@@ -59,11 +128,85 @@ export function PosterGenerator() {
     dragStartPos.current = currentPos;
   }, [isDraggingPrice, isDraggingBg]);
 
+  // Manejador para finalizar el arrastre
   const endDrag = useCallback(() => {
     setIsDraggingPrice(false);
     setIsDraggingBg(false);
   }, []);
 
+  // Función para remover el fondo usando remove.bg API
+  const removeBackground = async () => {
+    if (!backgroundImage) {
+      setError("Por favor, sube una imagen primero");
+      return;
+    }
+    
+    if (!apiKey) {
+      setError("Por favor, ingresa tu API key de remove.bg");
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError("");
+    
+    try {
+      // Convertir la imagen base64 a un archivo Blob
+      const base64Data = backgroundImage.split(',')[1];
+      const blob = b64toBlob(base64Data, 'image/png');
+      
+      const formData = new FormData();
+      formData.append('image_file', blob, 'image.png');
+      
+      // Llamar a la API de remove.bg
+      const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} ${response.statusText}`);
+      }
+      
+      // Convertir la respuesta a base64 para mostrarla
+      const imageBlob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBackgroundImage(reader.result as string);
+        setIsProcessing(false);
+      };
+      reader.readAsDataURL(imageBlob);
+      
+    } catch (error) {
+      console.error("Error al remover el fondo:", error);
+      setError("Error al procesar la imagen. Verifica tu API key y la conexión a internet.");
+      setIsProcessing(false);
+    }
+  };
+
+  // Función auxiliar para convertir base64 a Blob
+  const b64toBlob = (b64Data: string, contentType: string) => {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: contentType });
+  };
+
+  // Función para generar el póster
   const generatePoster = () => {
     if (!selectedTemplate || !backgroundImage || !canvasRef.current) return;
 
@@ -71,54 +214,100 @@ export function PosterGenerator() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Configurar dimensiones del canvas
     canvas.width = selectedTemplate.width;
     canvas.height = selectedTemplate.height;
 
-    // Draw background
+    // Crear y cargar imagen de fondo
     const bgImg = new Image();
     bgImg.onload = () => {
-      ctx.drawImage(bgImg, bgPosition.x, bgPosition.y);
+      // Calcular dimensiones escaladas
+      const scaledWidth = bgImg.width * bgScale;
+      const scaledHeight = bgImg.height * bgScale;
       
-      // Draw overlay
-      const overlay = new Image();
-      overlay.onload = () => {
-        ctx.drawImage(overlay, 0, 0, selectedTemplate.width, selectedTemplate.height);
-        
-        // Draw price
-        ctx.fillStyle = 'white';
-        ctx.font = `bold ${selectedTemplate.priceArea.fontSize}px Arial`;
+      // Dibujar imagen con posición y escala
+      ctx.drawImage(
+        bgImg, 
+        bgPosition.x, bgPosition.y, 
+        scaledWidth, scaledHeight
+      );
+      
+      // Dibujar overlay si está visible
+      if (showTemplate) {
+        const overlay = new Image();
+        overlay.onload = () => {
+          ctx.drawImage(overlay, 0, 0, selectedTemplate.width, selectedTemplate.height);
+          
+          // Dibujar precio
+          if (price) {
+            ctx.fillStyle = priceColor;
+            ctx.font = `bold ${priceFontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(price, pricePosition.x, pricePosition.y);
+          }
+        };
+        overlay.src = selectedTemplate.overlay;
+      } else if (price) {
+        // Si el template está oculto pero hay precio, dibujarlo de todas formas
+        ctx.fillStyle = priceColor;
+        ctx.font = `bold ${priceFontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText(price, pricePosition.x, pricePosition.y);
-        
-        // Draw logo if exists
-        if (selectedTemplate.logo) {
-          const logo = new Image();
-          logo.onload = () => {
-            ctx.drawImage(logo, 10, 10, 100, 100 * (logo.height / logo.width));
-          };
-          logo.src = selectedTemplate.logo;
-        }
-      };
-      overlay.src = selectedTemplate.overlay;
+      }
     };
     bgImg.src = backgroundImage;
   };
 
+  // Función para descargar el póster
   const downloadPoster = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    // Primero generar el póster
+    generatePoster();
     
-    const link = document.createElement('a');
-    link.download = 'poster.png';
-    link.href = canvas.toDataURL();
-    link.click();
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const link = document.createElement('a');
+      link.download = 'poster.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }, 500); // Pequeño retraso para asegurar que el canvas esté listo
+  };
+  
+  // Ajustar el tamaño de la imagen
+  const adjustImageSize = (factor: number) => {
+    setBgScale(prev => {
+      const newScale = prev * factor;
+      // Limitar el zoom entre 0.1 y 5
+      return Math.max(0.1, Math.min(5, newScale));
+    });
+  };
+  
+  // Ajustar el tamaño de la fuente del precio
+  const adjustFontSize = (change: number) => {
+    setPriceFontSize(prev => Math.max(10, Math.min(200, prev + change)));
+  };
+  
+  // Centrar la imagen
+  const centerImage = () => {
+    if (!selectedTemplate) return;
+    
+    setBgPosition({
+      x: (selectedTemplate.width / 2) - (backgroundImage ? 250 : 0),
+      y: (selectedTemplate.height / 2) - (backgroundImage ? 250 : 0)
+    });
+  };
+  
+  // Abrir el selector de archivos
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
-  // Add event listeners for drag
-  useState(() => {
+  // Agregar event listeners para drag
+  useEffect(() => {
     if (isDraggingPrice || isDraggingBg) {
       window.addEventListener('mousemove', onDrag);
-      window.addEventListener('touchmove', onDrag);
+      window.addEventListener('touchmove', onDrag, { passive: false });
       window.addEventListener('mouseup', endDrag);
       window.addEventListener('touchend', endDrag);
     }
@@ -132,113 +321,305 @@ export function PosterGenerator() {
   }, [isDraggingPrice, isDraggingBg, onDrag, endDrag]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8">Generador de Carteles de Oferta</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">Generador de Carteles</h1>
         
-        <TemplatePicker
-          templates={templates}
-          selectedTemplate={selectedTemplate}
-          onSelect={setSelectedTemplate}
-        />
-
-        <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subir Imagen de Fondo
-              </label>
+        {/* Selector de plantillas */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">Selecciona una plantilla</h2>
+          <TemplatePicker
+            templates={templates}
+            selectedTemplate={selectedTemplate}
+            onSelect={setSelectedTemplate}
+          />
+        </div>
+        
+        {/* Controles principales */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Panel de imagen */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Imagen de Fondo</h3>
+              
+              {/* Input file oculto */}
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="hidden"
               />
+              
+              {/* Botón para subir imagen */}
+              <button
+                onClick={triggerFileInput}
+                className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                <span>Subir Imagen</span>
+              </button>
+              
+              {/* API Key para remove.bg */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  API Key de remove.bg
+                </label>
+                <input
+                  type="text"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Ingresa tu API key"
+                  className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Obtén tu API key en <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">remove.bg/api</a>
+                </p>
+              </div>
+              
+              {/* Botón para quitar fondo */}
+              <button
+                onClick={removeBackground}
+                disabled={isProcessing || !backgroundImage || !apiKey}
+                className={`w-full p-2 rounded-md flex items-center justify-center ${
+                  isProcessing || !backgroundImage || !apiKey
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+              >
+                {isProcessing ? (
+                  <span>Procesando...</span>
+                ) : (
+                  <>
+                    <Image className="w-5 h-5 mr-2" />
+                    <span>Quitar Fondo</span>
+                  </>
+                )}
+              </button>
+              
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              
+              {/* Controles de manipulación de imagen */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => adjustImageSize(1.1)}
+                  disabled={!backgroundImage}
+                  className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  <Maximize className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => adjustImageSize(0.9)}
+                  disabled={!backgroundImage}
+                  className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  <Minimize className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={centerImage}
+                  disabled={!backgroundImage}
+                  className="p-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  <Move className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowGrid(!showGrid)}
+                  className={`p-2 rounded ${showGrid ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                >
+                  <Grid className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowTemplate(!showTemplate)}
+                  className={`p-2 rounded ${!showTemplate ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                >
+                  {showTemplate ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Precio
-              </label>
-              <input
-                type="text"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Ej: $99"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
+            
+            {/* Panel de precio */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Texto del Precio</h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Texto
+                </label>
+                <input
+                  type="text"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="Ej: $99"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Color
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="color"
+                    value={priceColor}
+                    onChange={(e) => setPriceColor(e.target.value)}
+                    className="p-1 border border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm">{priceColor}</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tamaño de fuente: {priceFontSize}px
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => adjustFontSize(-5)}
+                    className="p-2 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="range"
+                    min="10"
+                    max="200"
+                    value={priceFontSize}
+                    onChange={(e) => setPriceFontSize(parseInt(e.target.value))}
+                    className="flex-grow"
+                  />
+                  <button
+                    onClick={() => adjustFontSize(5)}
+                    className="p-2 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              
+              <div className="pt-4">
+                <button
+                  onClick={downloadPoster}
+                  disabled={!backgroundImage}
+                  className={`w-full p-3 rounded-md flex items-center justify-center ${
+                    !backgroundImage
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  <span>Descargar Banner</span>
+                </button>
+              </div>
             </div>
-
-            {selectedTemplate && (
-              <div className="relative mt-4" style={{
-                width: selectedTemplate.width,
-                height: selectedTemplate.height,
-                margin: '0 auto'
-              }}>
-                {/* Background Image */}
-                {backgroundImage && (
+          </div>
+        </div>
+        
+        {/* Área de previsualización */}
+        {selectedTemplate && (
+          <div className="relative mb-8 mx-auto overflow-hidden bg-white shadow-lg rounded-lg">
+            <div
+              style={{
+                width: '100%',
+                height: 0,
+                paddingBottom: `${(selectedTemplate.height / selectedTemplate.width) * 100}%`,
+                position: 'relative',
+              }}
+            >
+              {/* Grid de ayuda */}
+              {showGrid && (
+                <div
+                  className="absolute inset-0 z-10 pointer-events-none"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '50px 50px',
+                  }}
+                />
+              )}
+              
+              {/* Imagen de fondo */}
+              {backgroundImage && (
+                <div
+                  className="absolute cursor-move touch-none"
+                  style={{
+                    transform: `translate(${bgPosition.x}px, ${bgPosition.y}px) scale(${bgScale})`,
+                    transformOrigin: 'top left',
+                    transition: isDraggingBg ? 'none' : 'transform 0.1s ease',
+                  }}
+                  onMouseDown={(e) => startDrag(e, 'background')}
+                  onTouchStart={(e) => startDrag(e, 'background')}
+                >
                   <img
                     src={backgroundImage}
                     alt="Fondo"
-                    className="absolute cursor-move"
                     style={{
-                      transform: `translate(${bgPosition.x}px, ${bgPosition.y}px)`,
-                      touchAction: 'none'
+                      maxWidth: 'none',
                     }}
-                    onMouseDown={(e) => startDrag(e, false)}
-                    onTouchStart={(e) => startDrag(e, false)}
                   />
-                )}
-
-                {/* Template Overlay */}
+                </div>
+              )}
+              
+              {/* Template overlay */}
+              {showTemplate && (
                 <img
                   src={selectedTemplate.overlay}
                   alt="Template"
-                  className="absolute top-0 left-0 pointer-events-none"
+                  className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
                 />
-
-                {/* Draggable Price */}
+              )}
+              
+              {/* Texto del precio */}
+              {price && (
                 <div
-                  className="absolute flex items-center justify-center cursor-move"
+                  className="absolute flex items-center justify-center z-30 cursor-move touch-none"
                   style={{
-                    transform: `translate(${pricePosition.x}px, ${pricePosition.y}px)`,
-                    touchAction: 'none'
+                    left: pricePosition.x,
+                    top: pricePosition.y,
+                    transform: 'translate(-50%, -50%)',
+                    transition: isDraggingPrice ? 'none' : 'all 0.1s ease',
                   }}
-                  onMouseDown={(e) => startDrag(e, true)}
-                  onTouchStart={(e) => startDrag(e, true)}
+                  onMouseDown={(e) => startDrag(e, 'price')}
+                  onTouchStart={(e) => startDrag(e, 'price')}
                 >
-                  <Move className="w-6 h-6 text-blue-500" />
-                  <span className="ml-2 text-white font-bold" style={{
-                    fontSize: selectedTemplate.priceArea.fontSize
-                  }}>
-                    {price || '$99'}
+                  <span
+                    style={{
+                      color: priceColor,
+                      fontSize: `${priceFontSize * 0.8}px`,
+                      fontWeight: 'bold',
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {price}
                   </span>
                 </div>
-              </div>
-            )}
-
-            <div className="flex justify-center gap-4 mt-6">
-              <button
-                onClick={generatePoster}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Generar Cartel
-              </button>
-              <button
-                onClick={downloadPoster}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Descargar Cartel
-              </button>
+              )}
             </div>
-
-            <canvas
-              ref={canvasRef}
-              className="mt-8 mx-auto border border-gray-300 rounded-md"
-              style={{ display: 'none' }}
-            />
           </div>
-        </div>
+        )}
+        
+        {/* Canvas oculto para generar el póster */}
+        <canvas
+          ref={canvasRef}
+          className="hidden"
+        />
+      </div>
+      
+      {/* Instrucciones para el usuario */}
+      <div className="max-w-4xl mx-auto mt-8 p-4 bg-blue-50 rounded-lg text-sm">
+        <h3 className="font-medium mb-2">Instrucciones de uso:</h3>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>Selecciona una plantilla de las opciones disponibles.</li>
+          <li>Sube una imagen de fondo haciendo clic en "Subir Imagen".</li>
+          <li>Para quitar el fondo, ingresa tu API key de remove.bg y haz clic en "Quitar Fondo".</li>
+          <li>Agrega el texto del precio y ajusta su color y tamaño.</li>
+          <li>Arrastra la imagen y el precio para posicionarlos como desees.</li>
+          <li>Usa los botones de zoom para ajustar el tamaño de la imagen.</li>
+          <li>Cuando estés satisfecho, haz clic en "Descargar Banner".</li>
+        </ol>
       </div>
     </div>
   );

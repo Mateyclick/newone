@@ -1,3 +1,64 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  @apply bg-gray-50;
+}
+
+/* Estilos para mejorar la experiencia táctil en móviles */
+@media (max-width: 640px) {
+  button, 
+  [type='button'], 
+  [type='reset'], 
+  [type='submit'] {
+    @apply p-3; /* Botones más grandes en móvil para mejor interacción táctil */
+  }
+  
+  input[type='range'] {
+    @apply h-7; /* Sliders más grandes en dispositivos táctiles */
+  }
+  
+  input[type='color'] {
+    @apply h-10 w-10; /* Selector de color más grande en dispositivos táctiles */
+  }
+}
+
+/* Animaciones para transiciones suaves */
+.transition-opacity {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.transition-transform {
+  transition: transform 0.2s ease-in-out;
+}
+
+.transition-colors {
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* Estilos para el drag & drop */
+.cursor-move {
+  cursor: move;
+}
+
+/* Prevenir que el contenido seleccionable interfiera con el drag */
+.user-select-none {
+  user-select: none;
+}
+
+/* Mejorar transiciones */
+.scale-105 {
+  transform: scale(1.05);
+}
+
+/* Ajustes para mobile portrait */
+@media (orientation: portrait) and (max-width: 640px) {
+  .max-w-4xl {
+    max-width: 100%;
+  }
+}

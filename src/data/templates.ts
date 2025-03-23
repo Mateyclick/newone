@@ -1,20 +1,29 @@
+
 import { Template } from '../types';
 
 export const defaultTemplates: Template[] = [
   {
-    name: "Template 1",
-    thumbnail: "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=200&h=200&fit=crop",
-    overlay: "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=600&h=800&fit=crop",
-    width: 600,
-    height: 800,
-    priceArea: { x: 300, y: 720, fontSize: 40 }
+    name: "Oferta",
+    thumbnail: "/src/1.png", // Asegúrate de que esta ruta sea correcta
+    overlay: "/src/1.svg",
+    width: 1080,
+    height: 1920,
+    priceArea: { x: 540, y: 960, fontSize: 80 }
   },
   {
-    name: "Template 2",
-    thumbnail: "https://images.unsplash.com/photo-1557682260-96773eb01377?w=200&h=200&fit=crop",
-    overlay: "https://images.unsplash.com/photo-1557682260-96773eb01377?w=600&h=800&fit=crop",
-    width: 600,
-    height: 800,
-    priceArea: { x: 300, y: 80, fontSize: 40 }
+    name: "Nuevo",
+    thumbnail: "/src/2.png", 
+    overlay: "/src/2.svg",
+    width: 1080,
+    height: 1920,
+    priceArea: { x: 540, y: 960, fontSize: 80 }
+  },
+  {
+    name: "Descuento",
+    thumbnail: "/src/3.png",
+    overlay: "/src/3.svg",
+    width: 1080,
+    height: 1920,
+    priceArea: { x: 540, y: 960, fontSize: 80 }
   }
 ];
