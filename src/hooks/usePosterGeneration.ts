@@ -48,15 +48,17 @@ export function usePosterGeneration({
 
     // Create and load background image
     const bgImg = new window.Image();
+    bgImg.crossOrigin = "anonymous"; // Add this to handle CORS
     bgImg.onload = () => {
       // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
+      // Draw with proper position and scaling
+      console.log(`Drawing background image with position: ${bgPosition.x},${bgPosition.y} and scale: ${bgScale}`);
+      
       // Calculate scaled dimensions
       const scaledWidth = bgImg.width * bgScale;
       const scaledHeight = bgImg.height * bgScale;
-      
-      console.log(`Drawing background image at position: ${bgPosition.x},${bgPosition.y} with scale: ${bgScale}`);
       
       // Draw image with position and scale
       ctx.drawImage(
@@ -68,6 +70,7 @@ export function usePosterGeneration({
       // Draw overlay if visible
       if (showTemplate && selectedTemplate.overlay) {
         const overlay = new window.Image();
+        overlay.crossOrigin = "anonymous"; // Add this to handle CORS
         overlay.onload = () => {
           console.log("Drawing template overlay");
           ctx.drawImage(overlay, 0, 0, selectedTemplate.width, selectedTemplate.height);
@@ -96,6 +99,7 @@ export function usePosterGeneration({
       ctx.fillStyle = priceColor;
       ctx.font = `bold ${priceFontSize}px Arial`;
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle'; // Add this for better vertical alignment
       ctx.fillText(price, pricePosition.x, pricePosition.y);
     };
     

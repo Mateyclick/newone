@@ -1,3 +1,4 @@
+
 import { Template, Position } from '../../types';
 
 interface PosterPreviewProps {
@@ -71,6 +72,7 @@ export function PosterPreview({
               transform: `translate(${bgPosition.x}px, ${bgPosition.y}px) scale(${bgScale})`,
               transformOrigin: 'top left',
               transition: isDraggingBg ? 'none' : 'transform 0.1s ease',
+              zIndex: 5, // Add this to ensure it's behind the overlay
             }}
             onMouseDown={(e) => startDrag(e, 'background')}
             onTouchStart={(e) => startDrag(e, 'background')}
@@ -80,6 +82,7 @@ export function PosterPreview({
               alt="Fondo"
               style={{
                 maxWidth: 'none',
+                display: 'block', // Add this to fix layout issues
               }}
               onError={(e) => handleImageError(e, 'background image')}
             />
