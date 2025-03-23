@@ -1,6 +1,3 @@
-
-import { useRef, useEffect } from 'react';
-import { Grid, Eye, EyeOff } from 'lucide-react';
 import { Template, Position } from '../../types';
 
 interface PosterPreviewProps {

@@ -1,5 +1,4 @@
-
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Template } from '../types';
 import { TemplatePicker } from './TemplatePicker';
 import { defaultTemplates } from '../data/templates';
@@ -13,7 +12,7 @@ import { removeBackground as removeBackgroundUtil } from '../utils/backgroundRem
 
 export function PosterGenerator() {
   // Template states
-  const [templates, setTemplates] = useState<Template[]>(defaultTemplates);
+  const [templates] = useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(templates[0] || null);
   
   // Image and price states

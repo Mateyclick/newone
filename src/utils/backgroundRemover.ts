@@ -41,6 +41,10 @@ export const removeBackground = async (
     const formData = new FormData();
     formData.append('image_file', blob, 'image.png');
     formData.append('size', 'auto');
+    formData.append('format', 'png');
+    formData.append('type', 'product'); // Optimize for product images
+    
+    console.log("Calling remove.bg API with image...");
     
     // Call the remove.bg API
     const response = await fetch('https://api.remove.bg/v1.0/removebg', {
@@ -51,14 +55,28 @@ export const removeBackground = async (
       body: formData,
     });
     
+    console.log("API response status:", response.status);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error from remove.bg:", errorText);
-      throw new Error(`Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `Error: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        console.error("Error details:", errorData);
+        if (errorData.errors && errorData.errors.length > 0) {
+          errorMessage = errorData.errors[0].title || errorMessage;
+        }
+      } catch (e) {
+        // Failed to parse error JSON, continue with default message
+        const errorText = await response.text();
+        console.error("Error from remove.bg:", errorText);
+      }
+      
+      throw new Error(errorMessage);
     }
     
     // Convert the response to base64
     const imageBlob = await response.blob();
+    console.log("Successfully received image with background removed");
     
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -75,7 +93,9 @@ export const removeBackground = async (
     console.error("Error removing background:", error);
     return {
       success: false,
-      error: "Error al procesar la imagen. Verifica tu API key y la conexión a internet."
+      error: error instanceof Error 
+        ? error.message 
+        : "Error al procesar la imagen. Verifica tu API key y la conexión a internet."
     };
   }
 };
